@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  service-name:
+    build: .
+    deploy:
+      replicas: 2
+    pull_policy: build
+    # container_name: name
+    # ports:
+    #   - '3001:3001'
+    restart: unless-stopped
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.service-name.rule=Host(`domen.com`)'
+      - 'traefik.http.services.service-name.loadbalancer.server.port=3001'
+      - 'traefik.http.routers.service-name.tls=false'
+networks:
+  default:
+    name: proxynet
+    external: true

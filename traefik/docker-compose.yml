@@ -1,0 +1,65 @@
+version: '3'
+
+services:
+  reverse-proxy:
+    image: traefik:v2.10
+    container_name: traefik
+    command:
+      - '--api.insecure=false'
+      - '--api.dashboard=true'
+      - '--providers.docker'
+      - '--providers.docker.exposedByDefault=false'
+      - '--providers.docker.network=proxynet'
+      # - "--entrypoints.http.http.redirections.entrypoint.to=https"
+      # - "--entrypoints.http.http.redirections.entrypoint.scheme=https"
+      - '--entrypoints.http.address=:80'
+      - '--entrypoints.https.address=:443'
+      - '--log.level=DEBUG'
+      # # Let'sEncrypt
+      - '--entrypoints.https.http.tls.certResolver=le'
+      - '--certificatesresolvers.le.acme.tlschallenge=true'
+      - '--certificatesresolvers.le.acme.email=name@email.ru'
+      - '--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json'
+
+    ports:
+      # The HTTP port
+      - '80:80'
+      - '443:443'
+      # The Web UI (enabled by --api.insecure=true)
+      # - "8080:8080"
+      # DB Port
+      # - "3306:3306"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/traefik/letsencrypt:/letsencrypt
+    labels:
+      traefik.enable: true
+      traefik.http.routers.dashboard.rule: Host(`traefik.domen.com`)
+      traefik.http.routers.dashboard.entrypoints: https
+      traefik.http.routers.dashboard.service: api@internal
+      traefik.http.routers.dashboard.middlewares: auth
+      traefik.http.middlewares.auth.basicauth.users: 'administrator:$$dfgc$$sgcs.sgr$$kLnsNsLKHLLnfsdiuwnSKnf/0'
+
+      # Global redirection: http to https
+      traefik.http.routers.http-catchall.rule: HostRegexp(`{host:(www\.)?.+}`)
+      traefik.http.routers.http-catchall.entrypoints: http
+      traefik.http.routers.http-catchall.middlewares: wwwtohttps
+
+      # Global redirection: https (www.) to https
+      traefik.http.routers.wwwsecure-catchall.rule: HostRegexp(`{host:(www\.).+}`)
+      traefik.http.routers.wwwsecure-catchall.entrypoints: https
+      traefik.http.routers.wwwsecure-catchall.tls: true
+      traefik.http.routers.wwwsecure-catchall.middlewares: wwwtohttps
+
+      # middleware: http(s)://(www.) to  https://
+      traefik.http.middlewares.wwwtohttps.redirectregex.regex: ^https?://(?:www\.)?(.+)
+      traefik.http.middlewares.wwwtohttps.redirectregex.replacement: https://$${1}
+      traefik.http.middlewares.wwwtohttps.redirectregex.permanent: true
+
+#    networks:
+#      - web-proxy
+
+networks:
+  default:
+    name: proxynet

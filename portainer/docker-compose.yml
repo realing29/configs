@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  portainer:
+    image: portainer/portainer-ee:latest
+    container_name: portainer2
+    restart: always
+    command:
+      - '--http-enabled' # Включать только если соединение шифруется черзе прокси
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.portainer.rule=Host(`portainer.domen.com`)
+      - traefik.http.routers.portainer.entrypoints=https
+
+      - traefik.http.services.portainer.loadbalancer.server.port=9000
+      - traefik.http.routers.portainer.tls=false
+      # - traefik.http.routers.portainer-8000.rule=Host(`portainer.hilight.store`)
+      # - traefik.http.routers.portainer-8000.entrypoints=web-8000
+      # - traefik.http.services.portainer-8000.loadbalancer.server.port=8000
+networks:
+  default:
+    name: proxynet
+    external: true
+volumes:
+  portainer_data:
